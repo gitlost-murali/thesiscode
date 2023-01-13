@@ -6,6 +6,8 @@ __pycache__/
 # data files
 data/*
 
+*/lightning_logs/*
+
 # C extensions
 *.so
 
