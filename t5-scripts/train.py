@@ -43,6 +43,9 @@ def create_arg_parser():
     parser.add_argument("--max_seq_len", default=150, type=int,
                         help="Maximum length of input sequence after BPE")
 
+    parser.add_argument("--max_label_len", default=30, type=int,
+                        help="Maximum length of label sequence")
+
     parser.add_argument("--langmodel_name", default="t5-base", type=str,
                         help="Name of the base pretrained language model")
 

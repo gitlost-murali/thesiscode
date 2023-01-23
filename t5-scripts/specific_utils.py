@@ -18,7 +18,7 @@ class T5DatasetClass(Dataset):
     def __init__(self, questions, numbers, 
                        equations, answers, 
                        tokenizer, max_length,
-                       label_maxlen = 100):
+                       label_maxlen = 30):
         super(T5DatasetClass, self).__init__()
         self.tokenizer=tokenizer
         self.max_length=max_length
@@ -77,10 +77,11 @@ class LitOffData(pl.LightningDataModule):
                  train_file: str = 'data/train.tsv',
                  dev_file: str = 'data/dev.tsv',
                  batch_size = 4,
-                 max_seq_len = 100,
+                 max_seq_len = 150,
                  modelname = 't5-base',
                  datasetname = 'svamp',
                  equation_order = 'suffix',
+                 max_label_len = 30,
                 ):
         super().__init__()
         self.batch_size = batch_size
@@ -89,6 +90,7 @@ class LitOffData(pl.LightningDataModule):
         self.tokenizer = AutoTokenizer.from_pretrained(modelname)
         self.datasetname = datasetname
         self.equation_order = equation_order
+        self.label_maxlen = max_label_len
         self.read_data()
         
     def read_data(self):
@@ -108,12 +110,14 @@ class LitOffData(pl.LightningDataModule):
                                            numbers = self.numbers_train, 
                                            equations = self.equation_train,
                                            answers = self.answer_train,
+                                           label_maxlen=self.label_maxlen,
                                         )
         self.val_dataset= T5DatasetClass(tokenizer = self.tokenizer, max_length=self.max_seq_len,
                                          questions = self.question_dev, 
                                          numbers = self.numbers_dev, 
                                          equations = self.equation_dev,
                                          answers = self.answer_dev,
+                                         label_maxlen=self.label_maxlen,
                                         )
 
     def train_dataloader(self):
@@ -221,12 +225,18 @@ class Inference_LitOffData(pl.LightningDataModule):
                  batch_size = 4,
                  max_seq_len = 100,
                  modelname = 't5-base',
+                 datasetname = 'svamp',
+                 equation_order = 'suffix',
+                 max_label_len = 30,
                 ):
         super().__init__()
         self.batch_size = batch_size
         self.max_seq_len = max_seq_len
         self.test_file = test_file
         self.tokenizer = AutoTokenizer.from_pretrained(modelname)
+        self.datasetname = datasetname
+        self.equation_order = equation_order
+        self.label_maxlen = max_label_len
         self.read_data()
         self.setup()
 
@@ -242,7 +252,8 @@ class Inference_LitOffData(pl.LightningDataModule):
                                           questions = self.question_test, 
                                           numbers = self.numbers_test, 
                                           equations = self.equation_test,
-                                          answers = self.answer_test,)
+                                          answers = self.answer_test,
+                                          label_maxlen=self.label_maxlen,)
 
     def test_dataloader(self):
         dataloader=DataLoader(dataset=self.test_dataset,batch_size=self.batch_size)    
