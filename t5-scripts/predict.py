@@ -1,10 +1,11 @@
 """## INFERENCE from checkpoint"""
+import json
 from specific_utils import LitModel
 import pytorch_lightning as pl
-from specific_utils import Inference_LitOffData, TemplateHandler
+from specific_utils import Inference_LitOffData
 import argparse
 import torch
-from common_utils import write_preds_tofile, debug_wo_template
+from projutils import write_preds_tofile, debug_wo_template
 
 def create_arg_parser():
     parser = argparse.ArgumentParser()
@@ -35,17 +36,30 @@ def main():
     '''Main function to test neural network given cmd line arguments'''
     args = create_arg_parser()
     print(args)
-    templatehandler = TemplateHandler()
-    model = LitModel.load_from_checkpoint(args.best_modelname,
-                                          templatehandler = templatehandler)
+
+    # load args.best_modelname/args.json
+    with open(args.best_modelname + "/args.json", "r") as f:
+        model_args = json.load(f)
+
+    model = LitModel(modelname = model_args["langmodel_name"],
+                    learning_rate = model_args["learning_rate"],)
+
+    model.load_from_checkpoint(model_args["checkpoint_path"])
+
     model.eval()
     testdm = Inference_LitOffData(test_file = args.test_file,
-                                  labelmapper=templatehandler.labelmapper)
+                                batch_size = args.batch_size,
+                                modelname = model_args["langmodel_name"],
+                                datasetname=model_args["dataset_name"],
+                                equation_order=model_args["equation_order"],
+                                max_label_len=model_args["max_label_len"],
+                                max_seq_len=model_args["max_seq_len"])
+
     device_to_train = args.device if torch.cuda.is_available() else "cpu"
     print("Device to use ", device_to_train)
     trainer = pl.Trainer(accelerator=device_to_train, devices=1)
     outs = trainer.predict(model, testdm.test_dataloader())
-    write_preds_tofile(outs, "preds", templatehandler,args.output_predfile)
+    write_preds_tofile(outs, "preds", args.output_predfile)
     debug_wo_template(outs, args.debug_file)
 
 

@@ -10,7 +10,10 @@ from torch.utils.data import DataLoader
 from transformers import T5ForConditionalGeneration
 from sklearn.metrics import f1_score, accuracy_score
 
-from projutils import read_corpus, calculate_confusion_matrix, plot_confusion_matrix
+from projutils import read_corpus, calculate_confusion_matrix,\
+                      plot_confusion_matrix
+
+from projutils.asthandler import ASTHandler
 
 # from templatefile import TemplateHandler1 as TemplateHandler
 
@@ -26,12 +29,10 @@ class T5DatasetClass(Dataset):
         self.numbers=numbers
         self.equations=equations
         self.answers=answers
-        # self.labels = [ self.labelmapper[lb] for lb in self.orglabels]
-        self.labels = [lb for lb in self.equations]
         self.label_maxlen = label_maxlen
 
     def __len__(self):
-        return len(self.labels)
+        return len(self.answers)
     
     def __getitem__(self, index):
         
@@ -50,7 +51,7 @@ class T5DatasetClass(Dataset):
         mask = inputs["attention_mask"]
 
         target_encoding = self.tokenizer(
-            self.labels[index],
+            self.equations[index],
             max_length=self.label_maxlen,
             pad_to_max_length=True,
             add_special_tokens=True,
@@ -66,7 +67,10 @@ class T5DatasetClass(Dataset):
             'mask': mask[0],
             'labels': label[0],
             'sent_idx': torch.tensor(index, dtype=torch.long),
-            'actual_label': self.labels[index]
+            'actual_label': self.equations[index],
+            'numbers': self.numbers[index],
+            'questions': self.questions[index],
+            'answers': torch.tensor(self.answers[index], dtype=torch.long),
             }
 
         return output
@@ -132,16 +136,17 @@ class LitOffData(pl.LightningDataModule):
 
 class LitModel(pl.LightningModule):
     def __init__(self, modelname = "t5-base",
-                 dropout = 0.2, learning_rate = 1e-5, batch_size = 4,
+                 learning_rate = 1e-5, batch_size = 4,
                  save_cm_plot = True):
         super().__init__()
         self.base = T5ForConditionalGeneration.from_pretrained(modelname)
         self.tokenizer = AutoTokenizer.from_pretrained(modelname)
-        self.dropout = nn.Dropout(dropout)
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.save_cm_plot = save_cm_plot
         self.log("batch_size", self.batch_size)
+
+        self.asthandler = ASTHandler()
 
     def forward(self, ids, mask, labels, **kwargs):
         out = self.base( input_ids = ids,attention_mask=mask, labels=labels, return_dict=True)
@@ -167,20 +172,28 @@ class LitModel(pl.LightningModule):
         self.log('val_loss', loss,on_step=True, on_epoch=True, logger=True, prog_bar=True)
         return {"loss": loss}
 
+    def decode_equations(self, equation: str, numberslist: str):
+        try:
+            runnable_equation = self.asthandler.replace_nums(equation, numberslist.split())
+            result = self.asthandler.suffix2result(runnable_equation.split())
+        except:
+            result = "-1"
+        return result
+
     def test_step(self, batch, batch_idx):
         outputs = self.base.generate(batch["ids"])
         preds = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
-        preds = [self.templatehandler.decode_preds(prd) for prd in preds]
-        gts = [self.templatehandler.decode_preds(snt) for snt in batch["actual_label"]]
+        preds = [ self.decode_equations(prd, numberstring) for prd, numberstring in zip(preds, batch["numbers"]) ]
+        # gts = [self.templatehandler.decode_preds(snt) for snt in batch["actual_label"]]
+        gts = [snt for snt in batch["answers"]]
         return {"preds": preds, "gts": gts}
 
-    
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
         outputs = self.base.generate(batch["ids"])
         preds = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
-        preds = [self.templatehandler.decode_preds(prd) for prd in preds]
-        gts = [self.templatehandler.decode_preds(snt) for snt in batch["actual_label"]]
-        input_sentences = self.tokenizer.batch_decode(batch['ids'], skip_special_tokens = True)
+        preds = [ self.decode_equations(prd, numberstring) for prd, numberstring in zip(preds, batch["numbers"]) ]
+        gts = [snt.detach().item() for snt in batch["answers"]]
+        input_sentences = [snt for snt in batch["questions"]]
         return {"input_sentences": input_sentences, "preds": preds, "gts": gts}
 
     def validation_epoch_end(self, outs):

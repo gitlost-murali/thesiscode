@@ -130,5 +130,37 @@ class ASTHandler:
         prefix.reverse()
         return ' '.join(prefix)
 
+    # Execute suffix expression
+    def suffix2result(self, suffix: List[str]) -> float:
+        stack = []
+        for i in range(len(suffix)):
+            if suffix[i] in ['+', '-', '*', '/']:
+                op1 = stack.pop()
+                op2 = stack.pop()
+                if suffix[i] == '+':
+                    stack.append(op2 + op1)
+                elif suffix[i] == '-':
+                    stack.append(op2 - op1)
+                elif suffix[i] == '*':
+                    stack.append(op2 * op1)
+                elif suffix[i] == '/':
+                    stack.append(op2 / op1)
+            else:
+                stack.append(float(suffix[i]))
+        return stack.pop()
+
+    def replace_nums(self, pattern, operands):
+        """
+        pattern = "+ - number2 number1 number0"
+        operands = [5,3,2]
+        """
+        for i in range(len(operands)):
+            pattern = pattern.replace("number"+str(i),str(operands[i]))
+        return pattern
+
+    def decode_preds(self, preds):
+        preds = preds.split()
+        return preds
+
 if __name__ == '__main__':
     pass

@@ -24,14 +24,11 @@ def write_to_textfile(input_string, filename):
     with open(filename, "w", encoding="utf8") as fh:
         fh.write(input_string)
 
-def write_preds_tofile(outs, predkeyname, templatehandler, filename):
-    verbalizer2label = dict((v,k) for (k,v) in templatehandler.labelmapper.items())
+def write_preds_tofile(outs, predkeyname, filename):
     total_preds = []
     for item in outs:
         batch_preds = item[predkeyname]
-        batch_preds = [verbalizer2label.get(prd, "NA") for prd in batch_preds]
         total_preds.extend(batch_preds)
-
     write_to_textfile("\n".join(total_preds), filename)
 
 def flatten_batchdict(outs):
