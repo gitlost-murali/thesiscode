@@ -210,7 +210,9 @@ class LitModel(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
-        return optimizer
+        lr_scheduler = {"scheduler": optim.lr_scheduler.ReduceLROnPlateau(optimizer),
+                        "monitor": "train_loss_step", "mode": "min", "interval": "step", "frequency": 5}
+        return [optimizer], [lr_scheduler]
 
 
 class Inference_LitOffData(pl.LightningDataModule):
