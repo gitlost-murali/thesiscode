@@ -10,10 +10,9 @@ from torch.utils.data import DataLoader
 from transformers import T5ForConditionalGeneration
 from sklearn.metrics import f1_score, accuracy_score
 
-from utils import read_corpus
-from common_utils import calculate_confusion_matrix, plot_confusion_matrix
+from projutils import read_corpus, calculate_confusion_matrix, plot_confusion_matrix
 
-from templatefile import TemplateHandler1 as TemplateHandler
+# from templatefile import TemplateHandler1 as TemplateHandler
 
 class T5DatasetClass(Dataset):
     def __init__(self, questions, numbers, 
@@ -80,18 +79,28 @@ class LitOffData(pl.LightningDataModule):
                  batch_size = 4,
                  max_seq_len = 100,
                  modelname = 't5-base',
+                 datasetname = 'svamp',
+                 equation_order = 'suffix',
                 ):
         super().__init__()
         self.batch_size = batch_size
         self.max_seq_len = max_seq_len
         self.train_file, self.dev_file = train_file, dev_file
         self.tokenizer = AutoTokenizer.from_pretrained(modelname)
+        self.datasetname = datasetname
+        self.equation_order = equation_order
         self.read_data()
         
     def read_data(self):
         # Read in the data
-        self.question_train, self.numbers_train, self.equation_train, self.answer_train = read_corpus(self.train_file)
-        self.question_dev, self.numbers_dev, self.equation_dev, self.answer_dev = read_corpus(self.dev_file)
+        self.question_train, self.numbers_train,\
+        self.equation_train, self.answer_train = read_corpus(filename = self.train_file,
+                                                             dataname = self.datasetname,
+                                                             order = self.equation_order)
+        self.question_dev, self.numbers_dev,\
+        self.equation_dev, self.answer_dev = read_corpus(filename = self.dev_file,
+                                                         dataname = self.datasetname,
+                                                         order = self.equation_order)
 
     def setup(self, stage = None):
         self.train_dataset= T5DatasetClass(tokenizer = self.tokenizer, max_length=self.max_seq_len,
@@ -210,26 +219,28 @@ class Inference_LitOffData(pl.LightningDataModule):
                  batch_size = 4,
                  max_seq_len = 100,
                  modelname = 't5-base',
-                 labelmapper = {"OFF": "offensive", "NOT": "not offensive"},
                 ):
         super().__init__()
         self.batch_size = batch_size
         self.max_seq_len = max_seq_len
         self.test_file = test_file
         self.tokenizer = AutoTokenizer.from_pretrained(modelname)
-        self.labelmapper = labelmapper
         self.read_data()
         self.setup()
 
     def read_data(self):
         # Read in the data
-        self.X_test, self.Y_test = read_corpus(self.test_file)
-
+        self.question_test, self.numbers_test,\
+        self.equation_test, self.answer_test = read_corpus(filename = self.test_file,
+                                               dataname = self.datasetname,
+                                               order = self.equation_order)
 
     def setup(self, stage = None):
         self.test_dataset= T5DatasetClass(tokenizer = self.tokenizer, max_length=self.max_seq_len,
-                                       texts = self.X_test, labels = self.Y_test,
-                                       labelmapper = self.labelmapper)
+                                          questions = self.question_test, 
+                                          numbers = self.numbers_test, 
+                                          equations = self.equation_test,
+                                          answers = self.answer_test,)
 
     def test_dataloader(self):
         dataloader=DataLoader(dataset=self.test_dataset,batch_size=self.batch_size)    

@@ -13,7 +13,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping 
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-from specific_utils import LitModel, LitOffData, TemplateHandler
+from specific_utils import LitModel, LitOffData
 
 # Reference: https://discuss.pytorch.org/t/weighted-cross-entropy-for-each-sample-in-batch/101358/4
 
@@ -46,7 +46,7 @@ def create_arg_parser():
     parser.add_argument("--langmodel_name", default="t5-base", type=str,
                         help="Name of the base pretrained language model")
 
-    parser.add_argument("--ckpt_folder", default="./t5vanilla-wo-explain/", type=str,
+    parser.add_argument("--ckpt_folder", default="./t5model_train", type=str,
                         help="Name of the checkpoint folder for saving the model")
 
     parser.add_argument("--seed", default=1234, type=int,
@@ -54,6 +54,12 @@ def create_arg_parser():
 
     parser.add_argument("--device", default="gpu", type=str,
                         help="Type of device to use. gpu/cpu strict naming convention")
+
+    parser.add_argument("--dataset_name", default="svamp", type=str,
+                        help="Name of the dataset to use. svamp. \n strict naming convention")
+
+    parser.add_argument("--equation_order", default="suffix", type=str,
+                        help="Order of the equation. prefix/suffix/infix. \n strict naming convention")
 
     args = parser.parse_args()
     return args
@@ -78,7 +84,9 @@ def main():
                     dev_file =  args.dev_file,
                     batch_size = args.batch_size,
                     max_seq_len = args.max_seq_len,
-                    modelname = args.langmodel_name,)
+                    modelname = args.langmodel_name,
+                    datasetname=args.dataset_name,
+                    equation_order=args.equation_order)
 
 
     model = LitModel(modelname = args.langmodel_name, 
@@ -95,7 +103,7 @@ def main():
     trainer = pl.Trainer(deterministic=True, accelerator=device_to_train, devices=1,
                         max_epochs = args.num_epochs, fast_dev_run=False,
                         callbacks=[ early_stopping, checkpoint_callback ],
-                        default_root_dir = args.ckpt_folder)
+                        default_root_dir = f"{args.ckpt_folder}_{Path(args.langmodel_name).stem}_{args.dataset_name}_{args.equation_order}")
 
     trainer.fit(model, dm)
 

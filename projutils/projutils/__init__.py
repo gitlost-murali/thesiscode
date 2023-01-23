@@ -1,8 +1,9 @@
+
 import pandas as pd
 import seaborn as sn
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
-
+from projutils.asthandler import ASTHandler
 
 def calculate_confusion_matrix(Y_test, y_pred, labels,):
     matrix = confusion_matrix(Y_test, y_pred)
@@ -64,3 +65,34 @@ def debug_w_template(outs, filename):
             incorrect_items.append([snt,prd,gt, e_prd, e_gt])
     df = pd.DataFrame(incorrect_items, columns = list(outs[0].keys()))
     df.to_csv(filename)
+
+
+def read_corpus(filename = "data/train.tsv", delimiter = ",",
+                dataname = "svamp", order = "suffix"):
+    
+    asthandler = ASTHandler()
+
+    if dataname == "svamp":
+        df = pd.read_csv(filename, sep=delimiter)
+        question = df['Question'].values.tolist()
+        numbers = df['Numbers'].values.tolist()
+        df['Equation'] = df['Equation'].str.split()
+        if order=="suffix":
+            # Convert equation from prefix to suffix
+            equation = df['Equation'].apply(asthandler.prefix2suffix).values.tolist()
+        elif order=="infix":
+            # Convert equation from prefix to infix
+            equation = df['Equation'].apply(asthandler.prefix2infix).values.tolist()
+        answer = df['Answer'].values.tolist()
+        return question, numbers, equation, answer
+    else:
+        raise NotImplementedError("Only svamp dataset is implemented")
+
+def replace_nums(pattern, operands):
+    """
+    pattern = "+ - number2 number1 number0"
+    operands = [5,3,2]
+    """
+    for i in range(len(operands)):
+        pattern = pattern.replace("number"+str(i),str(operands[i]))
+    return pattern

@@ -16,8 +16,11 @@
 2. Run the training script
 
 ```
-python train.py --train_file ../../data/train.tsv --dev_file ../../data/dev.tsv --learning_rate 1e-4 --batch_size 8 --num_epochs 5 --max_seq_len 150 --langmodel_name t5-base --offensive_lexicon ../lexicon_words/final_offensive_lexicon.txt --ckpt_folder ./t5vanilla-wo-explain/ --seed 1234 --device cpu
+python train.py --train_file ../../data/SVAMP/cv_asdiv-a/fold0/train.csv --dev_file ../../data/SVAMP/cv_asdiv-a/fold0/dev.csv  --learning_rate 1e-4 --batch_size 4 --langmodel_name Salesforce/codet5-large --ckpt_folder ./codet5-train --seed 1234 --device cpu
 ```
+
+```
+python train.py --train_file ../../data/SVAMP/cv_asdiv-a/fold0/train.csv --dev_file ../../data/SVAMP/cv_asdiv-a/fold0/dev.csv  --learning_rate 1e-4 --batch_size 4 --langmodel_name t5-base --ckpt_folder ./vanillat5-train --seed 1234 --device cpu
 
 3. The best model will be stored in t5explain-files/best-model.ckpt
 
