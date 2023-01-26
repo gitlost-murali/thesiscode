@@ -8,7 +8,7 @@ import torch.optim as optim
 import torch
 from torch.utils.data import DataLoader
 from transformers import T5ForConditionalGeneration
-from sklearn.metrics import f1_score, accuracy_score
+from sklearn.metrics import accuracy_score
 
 from projutils import read_corpus, calculate_confusion_matrix,\
                       plot_confusion_matrix
@@ -137,13 +137,12 @@ class LitOffData(pl.LightningDataModule):
 class LitModel(pl.LightningModule):
     def __init__(self, modelname = "t5-base",
                  learning_rate = 1e-5, batch_size = 4,
-                 save_cm_plot = True):
+                 ):
         super().__init__()
         self.base = T5ForConditionalGeneration.from_pretrained(modelname)
         self.tokenizer = AutoTokenizer.from_pretrained(modelname)
         self.learning_rate = learning_rate
         self.batch_size = batch_size
-        self.save_cm_plot = save_cm_plot
         self.log("batch_size", self.batch_size)
 
         self.asthandler = ASTHandler()
@@ -213,17 +212,8 @@ class LitModel(pl.LightningModule):
             gts.extend(item["gts"])
 
         acc = accuracy_score(preds, gts)
-        f1 = f1_score(preds, gts, average='macro')
-
-        if self.save_cm_plot:
-            # get the classnames from encoder
-            matrix = calculate_confusion_matrix(gts, preds, list(set(gts+preds)) )
-            plot_confusion_matrix(matrix)
-
         self.log("test_epoch_acc", acc)
-        self.log("test_epoch_f1", f1)
         print("test_acc_epoch", acc)
-        print("test_F1_epoch", f1)
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)

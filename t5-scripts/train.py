@@ -65,6 +65,9 @@ def create_arg_parser():
     parser.add_argument("--equation_order", default="suffix", type=str,
                         help="Order of the equation. prefix/suffix/infix. \n strict naming convention")
 
+    # create a debug flag to run the code in debug mode which defaults to False
+    parser.add_argument("--debug", default=False, action="store_true", help="Run in debug mode")
+
     args = parser.parse_args()
     return args
 
@@ -95,19 +98,23 @@ def main():
 
     device_to_train = args.device if torch.cuda.is_available() else "cpu"
 
+    if args.debug:
+        debug_kwargs = dict(limit_train_batches=30, limit_val_batches=2)
+    else:
+        debug_kwargs = dict()
+
     trainer = pl.Trainer(deterministic=True, accelerator=device_to_train, devices=1,
                         max_epochs = args.num_epochs, fast_dev_run=False,
                         callbacks=[ early_stopping, checkpoint_callback ],
-                        default_root_dir = exp_folder,)
+                        default_root_dir = exp_folder, **debug_kwargs)
 
-                        # limit_train_batches=30, limit_val_batches=2)
     trainer.fit(model, dm)
 
     print(f"Best checkpoint is {checkpoint_callback.best_model_path}")
     
     model_args = vars(args)
     model_args["checkpoint_path"] = checkpoint_callback.best_model_path
-    with open(f"{exp_folder}/args.json", "w") as f:
+    with open(f"{exp_folder}/args.json", "w", encoding="utf-8") as f:
         json.dump(model_args, f, indent=4)
 
 
