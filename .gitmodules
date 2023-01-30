@@ -1,0 +1,3 @@
+[submodule "genrank"]
+	path = genrank
+	url = https://github.com/huawei-noah/noah-research.git
